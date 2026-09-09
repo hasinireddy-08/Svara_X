@@ -1,4 +1,4 @@
-# 🛡️ VoxSentinel
+# 🛡️ SVARA-X
 
 ### **Adaptive Real-Time Voice Trust & Impersonation Defense**
 
