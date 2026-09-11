@@ -1,0 +1,20 @@
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Pytest cache
+.pytest_cache/
+
+# Local test audio
+test_audio/
+
+# Local model/cache files
+.cache/
+
+# IDE/editor files
+.vscode/
+.idea/
