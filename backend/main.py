@@ -1,24 +1,21 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-import os
-import shutil
-import tempfile
+from backend.pipeline import run_pipeline
+from backend.websocket import handle_websocket
+from backend.schemas import AnalysisResponse
 
-from backend.services.interaction_service import run_interaction_analysis
-
-
-app = FastAPI(
-    title="Svara X Voice Detection API",
-    description="AI-generated voice and interaction analysis API",
-    version="1.0.0"
-)
+app = FastAPI(title="SVARA-X API")
 
 
-# Allow frontend to communicate with backend
+# Allow React frontend to communicate with FastAPI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,41 +25,38 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {
-        "message": "Svara X Voice Detection API is running"
+        "message": "SVARA-X backend is running"
     }
 
 
-@app.post("/analyze")
-async def analyze_voice(
-    file: UploadFile = File(...)
-):
+@app.post("/analyze", response_model=AnalysisResponse)
+async def analyze_audio(file: UploadFile = File(...)):
 
-    # Create temporary file
-    suffix = os.path.splitext(file.filename)[1] or ".wav"
-
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=suffix
-    ) as temp_file:
-
-        shutil.copyfileobj(
-            file.file,
-            temp_file
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No audio file selected."
         )
 
-        temp_path = temp_file.name
+    if not file.content_type or not file.content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a valid audio file."
+        )
 
     try:
-
-        # Run your existing AI voice detector
-        result = run_interaction_analysis(
-            temp_path
-        )
+        result = await run_pipeline(file)
+        result["filename"] = file.filename
 
         return result
 
-    finally:
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Audio analysis failed: {str(e)}"
+        )
 
-        # Delete temporary audio
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await handle_websocket(websocket)
