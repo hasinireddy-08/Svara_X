@@ -14,3 +14,5 @@ dist/
 
 # Environment variables
 .env
+# Local test audio
+test_audio/
